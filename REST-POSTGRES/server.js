@@ -90,6 +90,7 @@ app.get("/users", async (req, res) => {
     `;
     res.send(removePasswordFromArray(users));
   } catch (error) {
+    console.error("Error in GET /users:", error);
     res.status(500).send({ message: "Internal server error" });
   }
 });
@@ -138,13 +139,18 @@ app.post("/users", async (req, res) => {
 
 app.put("/users/:id", async (req, res) => {
   try {
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).send({ message: "Invalid user ID" });
+    }
+
     const validation = UpdateUserSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).send({ message: "Invalid data", errors: validation.error.errors });
     }
 
     const existing = await sql`
-      SELECT * FROM users WHERE id=${req.params.id}
+      SELECT * FROM users WHERE id=${userId}
     `;
 
     if (existing.length === 0) {
@@ -157,12 +163,13 @@ app.put("/users/:id", async (req, res) => {
     const users = await sql`
       UPDATE users
       SET name = ${name}, email = ${email}, password = ${hashedPassword}
-      WHERE id = ${req.params.id}
+      WHERE id = ${userId}
       RETURNING *
     `;
 
     res.send(removePassword(users[0]));
   } catch (error) {
+    console.error("Error in PUT /users/:id:", error);
     if (error.code === "23505") {
       res.status(409).send({ message: "Email already exists" });
     } else {
@@ -173,13 +180,18 @@ app.put("/users/:id", async (req, res) => {
 
 app.patch("/users/:id", async (req, res) => {
   try {
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).send({ message: "Invalid user ID" });
+    }
+
     const validation = PatchUserSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).send({ message: "Invalid data", errors: validation.error.errors });
     }
 
     const existing = await sql`
-      SELECT * FROM users WHERE id=${req.params.id}
+      SELECT * FROM users WHERE id=${userId}
     `;
 
     if (existing.length === 0) {
@@ -196,12 +208,13 @@ app.patch("/users/:id", async (req, res) => {
     const users = await sql`
       UPDATE users
       SET name = ${updateName}, email = ${updateEmail}, password = ${updatePassword}
-      WHERE id = ${req.params.id}
+      WHERE id = ${userId}
       RETURNING *
     `;
 
     res.send(removePassword(users[0]));
   } catch (error) {
+    console.error("Error in PATCH /users/:id:", error);
     if (error.code === "23505") {
       res.status(409).send({ message: "Email already exists" });
     } else {
@@ -212,9 +225,14 @@ app.patch("/users/:id", async (req, res) => {
 
 app.delete("/users/:id", async (req, res) => {
   try {
+    const userId = parseInt(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).send({ message: "Invalid user ID" });
+    }
+
     const users = await sql`
       DELETE FROM users
-      WHERE id=${req.params.id}
+      WHERE id=${userId}
       RETURNING *
     `;
   
@@ -224,6 +242,7 @@ app.delete("/users/:id", async (req, res) => {
       res.status(404).send({ message: "Not found" });
     }
   } catch (error) {
+    console.error("Error in DELETE /users/:id:", error);
     res.status(500).send({ message: "Internal server error" });
   }
 });
