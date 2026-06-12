@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Products — temps réel</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+      h1 { margin-bottom: 0.25rem; }
+      .status { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+      .status.connected { color: #0a7; }
+      ul { list-style: none; padding: 0; }
+      li { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; }
+      li strong { font-size: 1.1rem; }
+      .meta { color: #555; margin-top: 0.35rem; }
+      .categories { font-size: 0.85rem; color: #06c; margin-top: 0.35rem; }
+      form { display: grid; gap: 0.5rem; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #eee; }
+      input, button { padding: 0.5rem 0.75rem; font-size: 1rem; }
+      button { cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <h1>Produits</h1>
+    <p id="status" class="status">Connexion en cours…</p>
+    <ul id="products"></ul>
+
+    <form id="form">
+      <input id="name" placeholder="Nom" required />
+      <input id="about" placeholder="Description" required />
+      <input id="price" type="number" step="0.01" min="0.01" placeholder="Prix" required />
+      <input id="categoryIds" placeholder="IDs catégories (séparés par des virgules)" />
+      <button type="submit">Créer un produit</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      const statusEl = document.getElementById('status');
+      const listEl = document.getElementById('products');
+      const products = new Map();
+
+      socket.on('connect', () => {
+        statusEl.textContent = 'Connecté — mises à jour en temps réel actives';
+        statusEl.classList.add('connected');
+      });
+
+      socket.on('disconnect', () => {
+        statusEl.textContent = 'Déconnecté';
+        statusEl.classList.remove('connected');
+      });
+
+      function renderProduct(product) {
+        const id = product._id;
+        const categories = (product.categories || [])
+          .map((c) => c.name)
+          .join(', ');
+
+        let li = document.getElementById(`product-${id}`);
+        if (!li) {
+          li = document.createElement('li');
+          li.id = `product-${id}`;
+          listEl.appendChild(li);
+        }
+
+        li.innerHTML = `
+          <strong>${product.name}</strong>
+          <div class="meta">${product.about} — ${product.price} €</div>
+          ${categories ? `<div class="categories">Catégories : ${categories}</div>` : ''}
+        `;
+      }
+
+      function removeProduct(id) {
+        products.delete(id);
+        document.getElementById(`product-${id}`)?.remove();
+      }
+
+      async function loadProducts() {
+        const res = await fetch('/products');
+        const data = await res.json();
+        listEl.innerHTML = '';
+        products.clear();
+        data.forEach((product) => {
+          products.set(String(product._id), product);
+          renderProduct(product);
+        });
+      }
+
+      socket.on('products', (event) => {
+        const { action, product } = event;
+        const id = String(product._id);
+
+        if (action === 'deleted') {
+          removeProduct(id);
+          return;
+        }
+
+        products.set(id, product);
+        renderProduct(product);
+      });
+
+      document.getElementById('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const categoryIds = document
+          .getElementById('categoryIds')
+          .value.split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        await fetch('/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('name').value,
+            about: document.getElementById('about').value,
+            price: Number(document.getElementById('price').value),
+            categoryIds,
+          }),
+        });
+
+        e.target.reset();
+      });
+
+      loadProducts();
+    </script>
+  </body>
+</html>

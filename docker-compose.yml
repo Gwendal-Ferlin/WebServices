@@ -1,19 +1,18 @@
-version: "3.9"
 services:
   postgres:
-    image: postgres:15-alpine
-    container_name: postgres_db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=mydb
+    image: postgres
+    container_name: postgres
     ports:
-      - "5433:5432"
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "user"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
