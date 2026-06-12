@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -10,7 +11,8 @@
   "description": "",
   "dependencies": {
     "express": "^5.2.1",
-    "postgres": "^3.4.8",
-    "zod": "^4.3.6"
+    "postgres": "^3.4.9",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^4.4.3"
   }
 }
